@@ -6,24 +6,25 @@ Upload the contents of this folder to the GitHub Pages repository. Keep the dire
 - `index.html`
 - `css/styles.css`
 - `js/app.js`
-- `js/services/route-service.js`
+- `js/services/map-navigation.js`
 
-## Important routing decision
-This build intentionally does **not** call Naver/Kakao/Google routing APIs and contains no routing API token.
+## Map and navigation decision
+The app does not include a transit-routing engine or call Naver/Kakao/Google routing APIs.
 
 The app:
 - keeps the existing Leaflet day map;
-- shows ordered day-to-day place segments;
-- shows straight-line distance only as an estimate;
-- provides normal map links for opening an actual route in a map app/service;
-- never invents transit duration.
+- shows the ordered places for each day;
+- shows straight-line distance only as a visual estimate;
+- lets the user open individual places in a normal map app/service when navigation is needed;
+- does not display or guess transit duration.
 
-Actual transit duration is therefore calculated by the map service after the user opens the route, rather than by this GitHub Pages app.
+There is therefore no transit API key/token, routing SDK, or transit-routing module in this build.
+
 
 ## Main refactor
 - CSS moved out of `index.html`.
 - Application JavaScript moved out of `index.html`.
-- Token-free navigation helpers isolated in `js/services/route-service.js`.
+- Map-opening helpers isolated in `js/services/map-navigation.js`.
 - Mobile navigation reduced to five primary destinations.
 - Mobile-first touch targets and bottom-sheet modal layout.
 - Day summary and route segment presentation.

@@ -1,4 +1,4 @@
-import { buildExternalRouteLinks, buildPlaceNavigationLinks } from "./services/route-service.js";
+import { buildPlaceNavigationLinks } from "./services/map-navigation.js";
 import {
   initializeApp
 } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
@@ -1345,7 +1345,7 @@ function renderDayMapDistances(points) {
   if (!container) return;
   if (points.length < 2) {
     container.innerHTML = points.length === 0
-      ? `<div class="muted small">Chưa có đủ địa điểm có tọa độ để tạo chặng di chuyển.</div>`
+      ? `<div class="muted small">Chưa có đủ địa điểm có tọa độ.</div>`
       : `<div class="muted small">Chỉ có 1 địa điểm có tọa độ.</div>`;
     return;
   }
@@ -1356,31 +1356,25 @@ function renderDayMapDistances(points) {
     const a = points[i], b = points[i + 1];
     const straightKm = haversineKm(a.lat, a.lng, b.lat, b.lng);
     totalStraight += straightKm;
-    const links = buildExternalRouteLinks(a, b);
     rows.push(`
       <div class="route-segment">
         <div class="route-segment-head">
           <span><b>${i + 1} → ${i + 2}</b> <span class="muted">${escapeHtml(a.place.name)} → ${escapeHtml(b.place.name)}</span></span>
-          <strong>${straightKm.toFixed(1)} km*</strong>
-        </div>
-        <div class="route-segment-note">🧭 Thời gian transit không được gọi API trong app để tránh token/chi phí.</div>
-        <div class="route-segment-actions">
-          ${links.googleTransit ? `<a class="btn sm primary" href="${links.googleTransit}" target="_blank" rel="noopener noreferrer">🚇 Mở route</a>` : ""}
-          ${links.naverFrom ? `<a class="btn sm" href="${links.naverFrom}" target="_blank" rel="noopener noreferrer">📍 Naver</a>` : ""}
+          <strong>${straightKm.toFixed(1)} km</strong>
         </div>
       </div>
     `);
   }
+
   container.innerHTML = `
     <div class="route-summary">
-      <div><strong>Di chuyển giữa các điểm</strong><span class="pill gray">Không dùng API/token</span></div>
-      <div class="small muted">${rows.length} chặng · khoảng ${totalStraight.toFixed(1)} km đường chim bay*</div>
+      <div><strong>Khoảng cách giữa các điểm</strong></div>
+      <div class="small muted">${rows.length} chặng · khoảng ${totalStraight.toFixed(1)} km đường chim bay</div>
     </div>
     ${rows.join("")}
-    <div class="day-map-note">* Khoảng cách chỉ để ước lượng vị trí. Muốn xem tuyến và thời gian transit thực tế, mở route trên bản đồ; app không tự bịa thời gian.</div>
+    <div class="day-map-note">Khoảng cách chỉ là khoảng cách đường chim bay, không phải quãng đường di chuyển thực tế.</div>
   `;
 }
-
 
 function initOrUpdateDayMap(day) {
   const mapEl = document.getElementById("dayMap");
@@ -1622,16 +1616,6 @@ function renderItinerary() {
       </div>
       <div id="dayMap"></div>
       <div id="dayMapDistances" class="day-map-distances"></div>
-    </div>
-
-    <div class="card route-mode-card" style="margin-top:12px">
-      <div class="row">
-        <div>
-          <h2>Di chuyển trong ngày</h2>
-          <div class="small muted">App không gọi routing API có token. Mỗi chặng có nút mở route thực tế.</div>
-        </div>
-        <span class="pill green">Token-free</span>
-      </div>
     </div>
 
     <div class="card" style="margin-top:12px">
