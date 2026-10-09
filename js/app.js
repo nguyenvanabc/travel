@@ -183,7 +183,26 @@ function openPlaceDetail(placeId) {
     pushInfo("Thời gian gợi ý", String(place.suggestedMinutes) + " phút");
   }
   pushInfo("Giá / vé", place.priceNote || place.price || place.ticket);
-  pushInfo("Mô tả", place.description || place.guide || place.summary);
+  
+  // Thêm tham số isHtml (mặc định false)
+ const pushInfo = (label, value, isHtml = false) => {
+  const v = value == null ? "" : String(value).trim();
+  if (!v) return;
+  
+  // Nếu là HTML thì không escape, ngược lại vẫn escape để tránh lỗi/XSS
+  const bodyContent = isHtml ? v : escapeHtml(v);
+  
+  infoRows.push(`
+    <div class="pd-section">
+      <div class="pd-label">${escapeHtml(label)}</div>
+      <div class="pd-body">${bodyContent}</div>
+    </div>
+  `);
+  };
+
+  // Gọi riêng cho Mô tả với flag isHtml = true
+  pushInfo("Mô tả", place.description || place.guide || place.summary, true);
+
   pushInfo("Tips", place.tips || place.tip || place.hints);
   // notes cũ trên place: coi là guide phụ nếu khác personalNote
   if (place.notes && String(place.notes).trim() &&
