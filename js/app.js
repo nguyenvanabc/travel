@@ -108,6 +108,71 @@ function escapeHtml(value) {
 }
 
 
+// Chỉ cho phép các thẻ định dạng nội dung mô tả; loại bỏ script/event handler.
+function sanitizePlaceDescription(value) {
+  const input = String(value ?? "").trim();
+  if (!input) return "";
+
+  const parser = new DOMParser();
+  const parsed = parser.parseFromString(input, "text/html");
+  const allowedTags = new Set([
+    "P", "BR", "STRONG", "B", "EM", "I", "U", "S",
+    "H2", "H3", "H4", "UL", "OL", "LI", "BLOCKQUOTE",
+    "A", "IMG", "TABLE", "THEAD", "TBODY", "TR", "TH", "TD",
+    "HR", "CODE", "PRE"
+  ]);
+
+  function cleanNode(node) {
+    if (node.nodeType === Node.TEXT_NODE) {
+      return document.createTextNode(node.textContent || "");
+    }
+    if (node.nodeType !== Node.ELEMENT_NODE) return document.createDocumentFragment();
+
+    const tag = node.tagName.toUpperCase();
+    if (["SCRIPT", "STYLE", "IFRAME", "OBJECT", "EMBED", "FORM", "INPUT", "BUTTON", "SVG", "MATH"].includes(tag)) {
+      return document.createDocumentFragment();
+    }
+
+    const children = document.createDocumentFragment();
+    for (const child of Array.from(node.childNodes)) children.appendChild(cleanNode(child));
+    if (!allowedTags.has(tag)) return children;
+
+    const safe = document.createElement(tag.toLowerCase());
+    if (tag === "A") {
+      const href = node.getAttribute("href") || "";
+      if (/^(https?:|mailto:|tel:)/i.test(href.trim())) {
+        safe.setAttribute("href", href.trim());
+        safe.setAttribute("target", "_blank");
+        safe.setAttribute("rel", "noopener noreferrer");
+      }
+    }
+    if (tag === "IMG") {
+      const src = node.getAttribute("src") || "";
+      if (/^https?:\/\//i.test(src.trim())) {
+        safe.setAttribute("src", src.trim());
+        safe.setAttribute("alt", (node.getAttribute("alt") || "").slice(0, 200));
+        safe.setAttribute("loading", "lazy");
+        safe.setAttribute("referrerpolicy", "no-referrer");
+      } else {
+        return document.createDocumentFragment();
+      }
+    }
+    if (tag === "TH" || tag === "TD") {
+      for (const attr of ["colspan", "rowspan"]) {
+        const v = Number(node.getAttribute(attr));
+        if (Number.isInteger(v) && v >= 1 && v <= 20) safe.setAttribute(attr, String(v));
+      }
+    }
+    safe.appendChild(children);
+    return safe;
+  }
+
+  const output = document.createElement("div");
+  for (const child of Array.from(parsed.body.childNodes)) output.appendChild(cleanNode(child));
+  return output.innerHTML;
+}
+
+
 function money(value) {
   return new Intl.NumberFormat("ko-KR")
     .format(Number(value) || 0) + " ₩";
@@ -174,6 +239,11 @@ function openPlaceDetail(placeId) {
     if (!v) return;
     infoRows.push(`<div class="pd-section"><div class="pd-label">${escapeHtml(label)}</div><div class="pd-body">${escapeHtml(v)}</div></div>`);
   };
+  const pushHtmlInfo = (label, value) => {
+    const safeHtml = sanitizePlaceDescription(value);
+    if (!safeHtml) return;
+    infoRows.push(`<div class="pd-section"><div class="pd-label">${escapeHtml(label)}</div><div class="pd-body pd-rich-content">${safeHtml}</div></div>`);
+  };
 
   pushInfo("Địa chỉ", place.address || place.addr);
   pushInfo("Khu vực", place.area || place.district || place.neighborhood);
@@ -183,26 +253,7 @@ function openPlaceDetail(placeId) {
     pushInfo("Thời gian gợi ý", String(place.suggestedMinutes) + " phút");
   }
   pushInfo("Giá / vé", place.priceNote || place.price || place.ticket);
-  
-  // Thêm tham số isHtml (mặc định false)
- const pushInfo = (label, value, isHtml = false) => {
-  const v = value == null ? "" : String(value).trim();
-  if (!v) return;
-  
-  // Nếu là HTML thì không escape, ngược lại vẫn escape để tránh lỗi/XSS
-  const bodyContent = isHtml ? v : escapeHtml(v);
-  
-  infoRows.push(`
-    <div class="pd-section">
-      <div class="pd-label">${escapeHtml(label)}</div>
-      <div class="pd-body">${bodyContent}</div>
-    </div>
-  `);
-  };
-
-  // Gọi riêng cho Mô tả với flag isHtml = true
-  pushInfo("Mô tả", place.description || place.guide || place.summary, true);
-
+  pushHtmlInfo("Mô tả", place.description || place.guide || place.summary);
   pushInfo("Tips", place.tips || place.tip || place.hints);
   // notes cũ trên place: coi là guide phụ nếu khác personalNote
   if (place.notes && String(place.notes).trim() &&
