@@ -242,7 +242,13 @@ function openPlaceDetail(placeId) {
   const pushHtmlInfo = (label, value) => {
     const safeHtml = sanitizePlaceDescription(value);
     if (!safeHtml) return;
-    infoRows.push(`<div class="pd-section"><div class="pd-label">${escapeHtml(label)}</div><div class="pd-body pd-rich-content">${safeHtml}</div></div>`);
+    // Loại bỏ các ký tự &nbsp; hoặc khoảng trắng thừa ngay sau thẻ mở/đóng HTML
+    let cleanedHtml = safeHtml
+          .replace(/&nbsp;/g, ' ')          // Đổi các &nbsp; thành khoảng trắng thường
+          .replace(/>\s+</g, '><')          // Xóa khoảng trắng nằm giữa các thẻ HTML (khoảng trắng thừa gây cách xa)
+          .trim();
+
+    infoRows.push(`<div class="pd-section"><div class="pd-label">${escapeHtml(label)}</div><div class="pd-body pd-rich-content">${cleanedHtml}</div></div>`);
   };
 
   pushInfo("Địa chỉ", place.address || place.addr);
